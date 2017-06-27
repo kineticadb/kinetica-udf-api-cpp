@@ -12,105 +12,294 @@
 
 namespace kinetica
 {
-    template<std::size_t N>
-    struct CharN
+    inline uint8_t swapBytes(const uint8_t value)
     {
-        char raw[N];
+        return value;
+    }
 
-        CharN()
+    inline uint16_t swapBytes(const uint16_t value)
+    {
+        return ((value & 0xFF) << 8)
+                | ((value & 0xFF00) >> 8);
+    }
+
+    inline uint32_t swapBytes(const uint32_t value)
+    {
+        return ((value & 0xFF) << 24)
+                | ((value & 0xFF00) << 8)
+                | ((value & 0xFF0000) >> 8)
+                | ((value & 0xFF000000) >> 24);
+    }
+
+    inline uint64_t swapBytes(const uint64_t value)
+    {
+        return ((value & 0xFF) << 56)
+                | ((value & 0xFF00) << 40)
+                | ((value & 0xFF0000) << 24)
+                | ((value & 0xFF000000) << 8)
+                | ((value & 0xFF00000000) >> 8)
+                | ((value & 0xFF0000000000) >> 24)
+                | ((value & 0xFF000000000000) >> 40)
+                | ((value & 0xFF00000000000000) >> 56);
+    }
+
+    template<typename T>
+    struct CharNInt
+    {
+        static const std::size_t width = sizeof(T);
+
+        union
         {
-            std::memset(raw, 0, N);
+            T buffer;
+            char raw[width];
+        };
+
+        void clear()
+        {
+            buffer = 0;
         }
 
-        CharN(const char value)
+        int compare(const CharNInt<T>& value) const
         {
-            raw[N - 1] = value;
-            std::memset(raw, 0, N - 1);
+            return buffer == value.buffer ? 0 :
+                (buffer < value.buffer ? -1 : 1);
         }
 
-        CharN(const char* value)
+        void set(const char value)
         {
-            std::size_t length = strlen(value);
+            buffer = value << (8 * (sizeof(T) - 1));
+        }
 
-            for (std::size_t i = 0; i < N; ++i)
+        void set(const char* value, const std::size_t length)
+        {
+            if (length >= width)
             {
-                if (i < length)
+                buffer = swapBytes(*(T*)value);
+            }
+            else
+            {
+                buffer = 0;
+
+                for (std::size_t i = 0; i < length; ++i)
                 {
-                    raw[N - i - 1] = value[i];
-                }
-                else
-                {
-                    raw[N - i - 1] = 0;
+                    raw[width - 1 - i] = value[i];
                 }
             }
         }
 
-        CharN(const std::string& value)
+        bool operator ==(const CharNInt<T>& value) const
         {
-            for (std::size_t i = 0; i < N; ++i)
-            {
-                if (i < value.length())
-                {
-                    raw[N - i - 1] = value[i];
-                }
-                else
-                {
-                    raw[N - i - 1] = 0;
-                }
-            }
+            return buffer == value.buffer;
         }
 
-        void operator =(const char value)
+        bool operator !=(const CharNInt<T>& value) const
         {
-            *this = CharN<N>(value);
-        }
-
-        void operator =(const char* value)
-        {
-            *this = CharN<N>(value);
-        }
-
-        void operator =(const std::string& value)
-        {
-            *this = CharN<N>(value);
-        }
-
-        char& operator[](std::size_t index)
-        {
-            return raw[N - index - 1];
-        }
-
-        const char& operator[](std::size_t index) const
-        {
-            return raw[N - index - 1];
+            return buffer != value.buffer;
         }
 
         operator std::string() const
         {
-            std::string result;
-            result.reserve(N);
+            CharNInt<T> swapBuffer;
+            swapBuffer.buffer = swapBytes(buffer);
+            return raw[0] == 0 ? std::string(swapBuffer.raw) : std::string(swapBuffer.raw, width);
+        }
+    };
 
-            if (raw[0] != 0)
+    template<>
+    inline void CharNInt<uint8_t>::set(const char* value, const std::size_t length)
+    {
+        buffer = length == 0 ? 0 : (uint8_t)*value;
+    }
+
+    template<>
+    inline CharNInt<uint8_t>::operator std::string() const
+    {
+        return buffer == 0 ? std::string() : std::string(raw, 1);
+    }
+
+    template<typename T, std::size_t N>
+    struct CharNIntBuffer
+    {
+        static const std::size_t width = sizeof(T) * N;
+
+        union
+        {
+            T buffer[N];
+            char raw[width];
+        };
+
+        void clear()
+        {
+            std::memset(this, 0, width);
+        }
+
+        int compare(const CharNIntBuffer<T, N>& value) const
+        {
+            for (std::size_t i = 0; i < N; ++i)
             {
-                for (std::size_t i = 0; i < N; ++i)
+                if (buffer[N - 1 - i] == value.buffer[N - 1 - i])
                 {
-                    result.push_back(raw[N - i - 1]);
+                    continue;
+                }
+
+                return buffer[N - 1 - i] < value.buffer[N - 1 - i] ? -1 : 1;
+            }
+
+            return 0;
+        }
+
+        void set(const char value)
+        {
+            std::memset(this, 0, width);
+            raw[width - 1] = value;
+        }
+
+        void set(const char* value, const std::size_t length)
+        {
+            std::size_t i = 0;
+            std::size_t pos = 0;
+
+            if (length >= sizeof(T))
+            {
+                std::size_t limit = length - sizeof(T);
+
+                for (; i < N && pos <= limit; ++i, pos += sizeof(T))
+                {
+                    buffer[N - 1 - i] = swapBytes(((T*)value)[i]);
+                }
+
+                if (i == N)
+                {
+                    return;
                 }
             }
-            else
-            {
-                for (std::size_t i = 0; i < N; ++i)
-                {
-                    if (raw[N - i - 1] == 0)
-                    {
-                        break;
-                    }
 
-                    result.push_back(raw[N - i - 1]);
+            if (length > pos)
+            {
+                std::size_t limit = ++i * sizeof(T);
+
+                for (; pos < length && pos < limit; ++pos)
+                {
+                    raw[width - 1 - pos] = value[pos];
+                }
+
+                for (; pos < limit; ++pos)
+                {
+                    raw[width - 1 - pos] = 0;
                 }
             }
 
-            return result;
+            for (; i < N; ++i)
+            {
+                buffer[N - 1 - i] = 0;
+            }
+        }
+
+        bool operator ==(const CharNIntBuffer<T, N>& value) const
+        {
+            return std::memcmp(this, &value, width) == 0;
+        }
+
+        bool operator !=(const CharNIntBuffer<T, N>& value) const
+        {
+            return std::memcmp(this, &value, width) != 0;
+        }
+
+        operator std::string() const
+        {
+            CharNIntBuffer<T, N> swapBuffer;
+
+            for (std::size_t i = 0; i < N; ++i)
+            {
+                swapBuffer.buffer[i] = swapBytes(buffer[N - 1 - i]);
+
+                if (swapBuffer.buffer[i] == 0)
+                {
+                    return std::string(swapBuffer.raw);
+                }
+            }
+
+            return raw[0] == 0 ? std::string(swapBuffer.raw) : std::string(swapBuffer.raw, width);
+        }
+    };
+
+    template<std::size_t N> struct CharNBase : public CharNIntBuffer<uint8_t, N> {};
+    template<> struct CharNBase<1> : public CharNInt<uint8_t> {};
+    template<> struct CharNBase<2> : public CharNInt<uint16_t> {};
+    template<> struct CharNBase<4> : public CharNInt<uint32_t> {};
+    template<> struct CharNBase<8> : public CharNInt<uint64_t> {};
+    template<> struct CharNBase<16> : public CharNIntBuffer<uint64_t, 2> {};
+    template<> struct CharNBase<32> : public CharNIntBuffer<uint64_t, 4> {};
+    template<> struct CharNBase<64> : public CharNIntBuffer<uint64_t, 8> {};
+    template<> struct CharNBase<128> : public CharNIntBuffer<uint64_t, 16> {};
+    template<> struct CharNBase<256> : public CharNIntBuffer<uint64_t, 32> {};
+
+    template<std::size_t N>
+    struct CharN : CharNBase<N>
+    {
+        CharN()
+        {
+            this->clear();
+        }
+
+        CharN(const char value)
+        {
+            this->set(value);
+        }
+
+        CharN(const char* value)
+        {
+            this->set(value, strlen(value));
+        }
+
+        CharN(const std::string& value)
+        {
+            this->set(value.data(), value.length());
+        }
+
+        void operator =(const char value)
+        {
+            this->set(value);
+        }
+
+        void operator =(const char* value)
+        {
+            this->set(value, strlen(value));
+        }
+
+        void operator =(const std::string& value)
+        {
+            this->set(value.data(), value.length());
+        }
+
+        bool operator <(const CharN<N>& value) const
+        {
+            return this->compare(value) < 0;
+        }
+
+        bool operator <=(const CharN<N>& value) const
+        {
+            return this->compare(value) <= 0;
+        }
+
+        bool operator >(const CharN<N>& value) const
+        {
+            return this->compare(value) > 0;
+        }
+
+        bool operator >=(const CharN<N>& value) const
+        {
+            return this->compare(value) >= 0;
+        }
+
+        char& operator [](std::size_t index)
+        {
+            return this->raw[this->width - 1 - index];
+        }
+
+        const char& operator [](std::size_t index) const
+        {
+            return this->raw[this->width - 1 - index];
         }
     };
 
@@ -120,6 +309,49 @@ namespace kinetica
         os << (std::string)value;
         return os;
     }
+
+
+    struct Date
+    {
+        int32_t raw;
+
+        Date();
+        Date(const unsigned year, const unsigned month, const unsigned day);
+        unsigned getYear() const;
+        unsigned getMonth() const;
+        unsigned getDay() const;
+        std::string toString() const;
+        bool operator ==(const Date& value) const;
+        bool operator !=(const Date& value) const;
+        bool operator <(const Date& value) const;
+        bool operator <=(const Date& value) const;
+        bool operator >(const Date& value) const;
+        bool operator >=(const Date& value) const;
+    };
+
+    std::ostream& operator <<(std::ostream& os, const Date& value);
+
+
+    struct Time
+    {
+        uint32_t raw;
+
+        Time();
+        Time(const unsigned hour, const unsigned minute, const unsigned second, const unsigned millisecond);
+        unsigned getHour() const;
+        unsigned getMinute() const;
+        unsigned getSecond() const;
+        unsigned getMillisecond() const;
+        std::string toString() const;
+        bool operator ==(const Time& value) const;
+        bool operator !=(const Time& value) const;
+        bool operator <(const Time& value) const;
+        bool operator <=(const Time& value) const;
+        bool operator >(const Time& value) const;
+        bool operator >=(const Time& value) const;
+    };
+
+    std::ostream& operator <<(std::ostream& os, const Time& value);
 
 
     class ProcData

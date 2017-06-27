@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
                         case kinetica::ProcData::Column::CHAR64: outputColumn.appendValue(inputColumn.getValue<kinetica::CharN<64> >(k)); break;
                         case kinetica::ProcData::Column::CHAR128: outputColumn.appendValue(inputColumn.getValue<kinetica::CharN<128> >(k)); break;
                         case kinetica::ProcData::Column::CHAR256: outputColumn.appendValue(inputColumn.getValue<kinetica::CharN<256> >(k)); break;
-                        case kinetica::ProcData::Column::DATE: outputColumn.appendValue(inputColumn.getValue<int32_t>(k)); break;
+                        case kinetica::ProcData::Column::DATE: outputColumn.appendValue(inputColumn.getValue<kinetica::Date>(k)); break;
                         case kinetica::ProcData::Column::DECIMAL: outputColumn.appendValue(inputColumn.getValue<int64_t>(k)); break;
                         case kinetica::ProcData::Column::DOUBLE: outputColumn.appendValue(inputColumn.getValue<double>(k)); break;
                         case kinetica::ProcData::Column::FLOAT: outputColumn.appendValue(inputColumn.getValue<float>(k)); break;
@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
                         case kinetica::ProcData::Column::IPV4: outputColumn.appendValue(inputColumn.getValue<uint32_t>(k)); break;
                         case kinetica::ProcData::Column::LONG: outputColumn.appendValue(inputColumn.getValue<int64_t>(k)); break;
                         case kinetica::ProcData::Column::STRING: outputColumn.appendVarString(inputColumn.getVarString(k)); break;
-                        case kinetica::ProcData::Column::TIME: outputColumn.appendValue(inputColumn.getValue<int32_t>(k)); break;
+                        case kinetica::ProcData::Column::TIME: outputColumn.appendValue(inputColumn.getValue<kinetica::Time>(k)); break;
                         case kinetica::ProcData::Column::TIMESTAMP: outputColumn.appendValue(inputColumn.getValue<int64_t>(k)); break;
                     }
                 }

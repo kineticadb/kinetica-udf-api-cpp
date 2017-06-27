@@ -45,6 +45,167 @@ namespace
 namespace kinetica
 {
     //--------------------------------------------------------------------------
+    // Date
+    //--------------------------------------------------------------------------
+
+    Date::Date() :
+        raw(0x8f821000) // 1000-01-01 (earliest allowed date)
+    {
+    }
+
+    Date::Date(const unsigned year, const unsigned month, const unsigned day) :
+        raw((((int)year - 1900) << 21)
+            | (month << 17)
+            | (day << 12))
+    {
+    }
+
+    unsigned Date::getYear() const
+    {
+        return 1900 + (raw >> 21);
+    }
+
+    unsigned Date::getMonth() const
+    {
+        return (raw >> 17) & 0xf;
+    }
+
+    unsigned Date::getDay() const
+    {
+        return (raw >> 12) & 0x1f;
+    }
+
+    std::string Date::toString() const
+    {
+        std::ostringstream oss;
+        oss << std::setfill('0')
+            << std::setw(4) << getYear() << '-'
+            << std::setw(2) << getMonth() << '-'
+            << std::setw(2) << getDay();
+        return oss.str();
+    }
+
+    bool Date::operator ==(const Date& value) const
+    {
+        return raw == value.raw;
+    }
+
+    bool Date::operator !=(const Date& value) const
+    {
+        return raw != value.raw;
+    }
+
+    bool Date::operator <(const Date& value) const
+    {
+        return raw < value.raw;
+    }
+
+    bool Date::operator <=(const Date& value) const
+    {
+        return raw <= value.raw;
+    }
+
+    bool Date::operator >(const Date& value) const
+    {
+        return raw > value.raw;
+    }
+
+    bool Date::operator >=(const Date& value) const
+    {
+        return raw >= value.raw;
+    }
+
+    std::ostream& operator <<(std::ostream& os, const Date& value)
+    {
+        os << value.toString();
+        return os;
+    }
+
+    //--------------------------------------------------------------------------
+    // Time
+    //--------------------------------------------------------------------------
+
+    Time::Time() :
+        raw(0)
+    {
+    }
+
+    Time::Time(const unsigned hour, const unsigned minute, const unsigned second, const unsigned millisecond) :
+        raw((hour << 26)
+            | (minute << 20)
+            | (second << 14)
+            | (millisecond << 4))
+    {
+    }
+
+    unsigned Time::getHour() const
+    {
+        return raw >> 26;
+    }
+
+    unsigned Time::getMinute() const
+    {
+        return (raw >> 20) & 0x3f;
+    }
+
+    unsigned Time::getSecond() const
+    {
+        return (raw >> 14) & 0x3f;
+    }
+
+    unsigned Time::getMillisecond() const
+    {
+        return (raw >> 4) & 0x3ff;
+    }
+
+    std::string Time::toString() const
+    {
+        std::ostringstream oss;
+        oss << std::setfill('0')
+            << std::setw(2) << getHour() << ':'
+            << std::setw(2) << getMinute() << ':'
+            << std::setw(2) << getSecond() << '.'
+            << std::setw(3) << getMillisecond();
+        return oss.str();
+    }
+
+    bool Time::operator ==(const Time& value) const
+    {
+        return raw == value.raw;
+    }
+
+    bool Time::operator !=(const Time& value) const
+    {
+        return raw != value.raw;
+    }
+
+    bool Time::operator <(const Time& value) const
+    {
+        return raw < value.raw;
+    }
+
+    bool Time::operator <=(const Time& value) const
+    {
+        return raw <= value.raw;
+    }
+
+    bool Time::operator >(const Time& value) const
+    {
+        return raw > value.raw;
+    }
+
+    bool Time::operator >=(const Time& value) const
+    {
+        return raw >= value.raw;
+    }
+
+    std::ostream& operator <<(std::ostream& os, const Time& value)
+    {
+        os << value.toString();
+        return os;
+    }
+
+    //--------------------------------------------------------------------------
     // MemoryMappedFile
     //--------------------------------------------------------------------------
 
@@ -357,7 +518,7 @@ namespace kinetica
             case CHAR64: return getValue<CharN<64> >(index);
             case CHAR128: return getValue<CharN<128> >(index);
             case CHAR256: return getValue<CharN<256> >(index);
-            case DATE: return ::toString(getValue<int32_t>(index));
+            case DATE: return getValue<Date>(index).toString();
             case DECIMAL: return ::toString(getValue<int64_t>(index));
             case DOUBLE: return ::toString(getValue<double>(index));
             case FLOAT: return ::toString(getValue<float>(index));
@@ -367,7 +528,7 @@ namespace kinetica
             case IPV4: return ::toIPv4String(&getValue<uint8_t>(index * 4));
             case LONG: return ::toString(getValue<int64_t>(index));
             case STRING: return std::string(getVarValue<char>(index), getVarValueSize<char>(index) - 1);
-            case TIME: return ::toString(getValue<int32_t>(index));
+            case TIME: return getValue<Time>(index).toString();
             case TIMESTAMP: return ::toString(getValue<int64_t>(index));
             default: throw std::runtime_error("Invalid data type");
         }
