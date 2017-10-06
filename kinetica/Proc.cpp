@@ -87,35 +87,141 @@ namespace kinetica
 
     bool Date::operator ==(const Date& value) const
     {
-        return raw == value.raw;
+        return (raw & 0xFFFFF000) == (value.raw & 0xFFFFF000);
     }
 
     bool Date::operator !=(const Date& value) const
     {
-        return raw != value.raw;
+        return (raw & 0xFFFFF000) != (value.raw & 0xFFFFF000);
     }
 
     bool Date::operator <(const Date& value) const
     {
-        return raw < value.raw;
+        return (raw & 0xFFFFF000) < (value.raw & 0xFFFFF000);
     }
 
     bool Date::operator <=(const Date& value) const
     {
-        return raw <= value.raw;
+        return (raw & 0xFFFFF000) <= (value.raw & 0xFFFFF000);
     }
 
     bool Date::operator >(const Date& value) const
     {
-        return raw > value.raw;
+        return (raw & 0xFFFFF000) > (value.raw & 0xFFFFF000);
     }
 
     bool Date::operator >=(const Date& value) const
     {
-        return raw >= value.raw;
+        return (raw & 0xFFFFF000) >= (value.raw & 0xFFFFF000);
     }
 
     std::ostream& operator <<(std::ostream& os, const Date& value)
+    {
+        os << value.toString();
+        return os;
+    }
+
+    //--------------------------------------------------------------------------
+    // DateTime
+    //--------------------------------------------------------------------------
+
+    DateTime::DateTime() :
+        raw(0x8f82100000000000) // 1000-01-01 00:00:00.000 (earliest allowed datetime)
+    {
+    }
+
+    DateTime::DateTime(const unsigned year, const unsigned month, const unsigned day,
+                       const unsigned hour, const unsigned minute, const unsigned second, const unsigned millisecond) :
+        raw((((long)year - 1900) << 53)
+            | ((long)month << 49)
+            | ((long)day << 44)
+            | ((long)hour << 39)
+            | ((long)minute << 33)
+            | ((long)second << 27)
+            | ((long)millisecond << 17))
+    {
+    }
+
+    unsigned DateTime::getYear() const
+    {
+        return 1900 + (raw >> 53);
+    }
+
+    unsigned DateTime::getMonth() const
+    {
+        return (raw >> 49) & 0xf;
+    }
+
+    unsigned DateTime::getDay() const
+    {
+        return (raw >> 44) & 0x1f;
+    }
+
+    unsigned DateTime::getHour() const
+    {
+        return (raw >> 39) & 0x1f;
+    }
+
+    unsigned DateTime::getMinute() const
+    {
+        return (raw >> 33) & 0x3f;
+    }
+
+    unsigned DateTime::getSecond() const
+    {
+        return (raw >> 27) & 0x3f;
+    }
+
+    unsigned DateTime::getMillisecond() const
+    {
+        return (raw >> 17) & 0x3ff;
+    }
+
+    std::string DateTime::toString() const
+    {
+        std::ostringstream oss;
+        oss << std::setfill('0')
+            << std::setw(4) << getYear() << '-'
+            << std::setw(2) << getMonth() << '-'
+            << std::setw(2) << getDay() << ' '
+            << std::setw(2) << getHour() << ':'
+            << std::setw(2) << getMinute() << ':'
+            << std::setw(2) << getSecond() << '.'
+            << std::setw(3) << getMillisecond();
+        return oss.str();
+    }
+
+    bool DateTime::operator ==(const DateTime& value) const
+    {
+        return (raw & 0xFFFFFFFFFFFE0000) == (value.raw & 0xFFFFFFFFFFFE0000);
+    }
+
+    bool DateTime::operator !=(const DateTime& value) const
+    {
+        return (raw & 0xFFFFFFFFFFFE0000) != (value.raw & 0xFFFFFFFFFFFE0000);
+    }
+
+    bool DateTime::operator <(const DateTime& value) const
+    {
+        return (raw & 0xFFFFFFFFFFFE0000) < (value.raw & 0xFFFFFFFFFFFE0000);
+    }
+
+    bool DateTime::operator <=(const DateTime& value) const
+    {
+        return (raw & 0xFFFFFFFFFFFE0000) <= (value.raw & 0xFFFFFFFFFFFE0000);
+    }
+
+    bool DateTime::operator >(const DateTime& value) const
+    {
+        return (raw & 0xFFFFFFFFFFFE0000) > (value.raw & 0xFFFFFFFFFFFE0000);
+    }
+
+    bool DateTime::operator >=(const DateTime& value) const
+    {
+        return (raw & 0xFFFFFFFFFFFE0000) >= (value.raw & 0xFFFFFFFFFFFE0000);
+    }
+
+    std::ostream& operator <<(std::ostream& os, const DateTime& value)
     {
         os << value.toString();
         return os;
@@ -398,6 +504,7 @@ namespace kinetica
             case CHAR128:   return 128;
             case CHAR256:   return 256;
             case DATE:      return 4;
+            case DATETIME:  return 8;
             case DECIMAL:   return 8;
             case DOUBLE:    return 8;
             case FLOAT:     return 4;
@@ -519,6 +626,7 @@ namespace kinetica
             case CHAR128: return getValue<CharN<128> >(index);
             case CHAR256: return getValue<CharN<256> >(index);
             case DATE: return getValue<Date>(index).toString();
+            case DATETIME: return getValue<DateTime>(index).toString();
             case DECIMAL: return ::toString(getValue<int64_t>(index));
             case DOUBLE: return ::toString(getValue<double>(index));
             case FLOAT: return ::toString(getValue<float>(index));
@@ -612,7 +720,7 @@ namespace kinetica
     //--------------------------------------------------------------------------
 
     ProcData::InputTable::InputTable(MemoryMappedFile& controlFile) :
-        Table(controlFile)
+        Table<ProcData::InputColumn>(controlFile)
     {
     }
 
@@ -621,7 +729,7 @@ namespace kinetica
     //--------------------------------------------------------------------------
 
     ProcData::OutputTable::OutputTable(MemoryMappedFile& controlFile) :
-        Table(controlFile)
+        Table<ProcData::OutputColumn>(controlFile)
     {
     }
 
@@ -682,7 +790,7 @@ namespace kinetica
     //--------------------------------------------------------------------------
 
     ProcData::InputDataSet::InputDataSet(MemoryMappedFile& controlFile) :
-        DataSet(controlFile)
+        DataSet<ProcData::InputTable>(controlFile)
     {
     }
 
@@ -691,7 +799,7 @@ namespace kinetica
     //--------------------------------------------------------------------------
 
     ProcData::OutputDataSet::OutputDataSet(MemoryMappedFile& controlFile) :
-        DataSet(controlFile)
+        DataSet<ProcData::OutputTable>(controlFile)
     {
     }
 
@@ -712,7 +820,7 @@ namespace kinetica
 
     ProcData::OutputTable& ProcData::OutputDataSet::getTable(const std::string& name)
     {
-        typename std::map<std::string, OutputTable*>::iterator table = m_tableMap.find(name);
+        std::map<std::string, OutputTable*>::iterator table = m_tableMap.find(name);
 
         if (table != m_tableMap.end())
         {

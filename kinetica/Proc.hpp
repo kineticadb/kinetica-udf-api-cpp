@@ -332,6 +332,32 @@ namespace kinetica
     std::ostream& operator <<(std::ostream& os, const Date& value);
 
 
+    struct DateTime
+    {
+        int64_t raw;
+
+        DateTime();
+        DateTime(const unsigned year, const unsigned month, const unsigned day,
+                 const unsigned hour, const unsigned minute, const unsigned second, const unsigned millisecond);
+        unsigned getYear() const;
+        unsigned getMonth() const;
+        unsigned getDay() const;
+        unsigned getHour() const;
+        unsigned getMinute() const;
+        unsigned getSecond() const;
+        unsigned getMillisecond() const;
+        std::string toString() const;
+        bool operator ==(const DateTime& value) const;
+        bool operator !=(const DateTime& value) const;
+        bool operator <(const DateTime& value) const;
+        bool operator <=(const DateTime& value) const;
+        bool operator >(const DateTime& value) const;
+        bool operator >=(const DateTime& value) const;
+    };
+
+    std::ostream& operator <<(std::ostream& os, const DateTime& value);
+
+
     struct Time
     {
         uint32_t raw;
@@ -483,6 +509,7 @@ namespace kinetica
                 CHAR128   = 0x0800000,
                 CHAR256   = 0x1000000,
                 DATE      = 0x2000000,
+                DATETIME  = 0x0000200,
                 DECIMAL   = 0x8000000,
                 DOUBLE    = 0x0000010,
                 FLOAT     = 0x0000020,
