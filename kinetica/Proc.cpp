@@ -8,6 +8,7 @@
 #include <ios>
 #include <sstream>
 #include <unistd.h>
+#include <sys/file.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 
@@ -426,6 +427,11 @@ namespace kinetica
         }
     }
 
+    bool ProcData::MemoryMappedFile::isMapped() const
+    {
+        return m_file != -1;
+    }
+
     std::size_t ProcData::MemoryMappedFile::getSize() const
     {
         return m_size;
@@ -434,6 +440,12 @@ namespace kinetica
     std::size_t ProcData::MemoryMappedFile::getPos() const
     {
         return m_pos;
+    }
+
+    void ProcData::MemoryMappedFile::seek(const std::size_t pos)
+    {
+        ensure(pos - m_pos);
+        m_pos = pos;
     }
 
     void ProcData::MemoryMappedFile::read(void *value, std::size_t length)
@@ -467,6 +479,42 @@ namespace kinetica
     void ProcData::MemoryMappedFile::truncate()
     {
         remap(m_pos);
+    }
+
+    void ProcData::MemoryMappedFile::lock(const bool exclusive)
+    {
+        if (m_file == -1)
+        {
+            throw std::runtime_error("File not mapped");
+        }
+
+        int operation = exclusive ? LOCK_EX : LOCK_SH;
+
+        int err;
+
+        do
+        {
+            err = flock(m_file, operation);
+        }
+        while (err != 0 && errno == EINTR);
+
+        if (err != 0)
+        {
+            throw std::runtime_error("Could not lock file: " + std::string(std::strerror(errno)));
+        }
+    }
+
+    void ProcData::MemoryMappedFile::unlock()
+    {
+        if (m_file == -1)
+        {
+            return;
+        }
+
+        if (flock(m_file, LOCK_UN) != 0)
+        {
+            throw std::runtime_error("Could not unlock file: " + std::string(std::strerror(errno)));
+        }
     }
 
     void ProcData::MemoryMappedFile::ensure(const std::size_t length)
@@ -896,7 +944,7 @@ namespace kinetica
 
             uint64_t version = controlFile.next<uint64_t>();
 
-            if (version != 1)
+            if (version != 1 && version != 2)
             {
                 throw std::runtime_error("Unrecognized control file version: " + toString(version));
             }
@@ -908,6 +956,13 @@ namespace kinetica
             m_inputData = new InputDataSet(controlFile);
             m_outputData = new OutputDataSet(controlFile);
             controlFile.read(m_outputControlFileName);
+
+            if (version == 2)
+            {
+                std::string statusFileName;
+                controlFile.read(statusFileName);
+                m_statusFile.map(statusFileName, true);
+            }
         }
         catch (...)
         {
@@ -991,5 +1046,33 @@ namespace kinetica
     ProcData::OutputDataSet& ProcData::getOutputData()
     {
         return *m_outputData;
+    }
+
+    const std::string& ProcData::getStatus() const
+    {
+        return m_status;
+    }
+
+    void ProcData::setStatus(const std::string& value)
+    {
+        m_status = value;
+
+        if (m_statusFile.isMapped())
+        {
+            m_statusFile.lock(true);
+
+            try
+            {
+                m_statusFile.seek(0);
+                m_statusFile.write(value);
+            }
+            catch (...)
+            {
+                m_statusFile.unlock();
+                throw;
+            }
+
+            m_statusFile.unlock();
+        }
     }
 }

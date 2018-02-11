@@ -391,6 +391,7 @@ namespace kinetica
             void map(const std::string& path, bool writable, std::size_t size = (std::size_t)-1);
             void remap(std::size_t size = (std::size_t)-1);
             void unmap();
+            bool isMapped() const;
 
             std::size_t getSize() const;
 
@@ -407,6 +408,7 @@ namespace kinetica
             }
 
             std::size_t getPos() const;
+            void seek(const std::size_t pos);
 
             template<typename T>
             T& next()
@@ -474,6 +476,8 @@ namespace kinetica
             }
 
             void truncate();
+            void lock(const bool exclusive);
+            void unlock();
 
         private:
             static std::size_t MEM_PAGE_SIZE;
@@ -936,6 +940,9 @@ namespace kinetica
         std::map<std::string, std::vector<uint8_t> >& getBinResults();
         OutputDataSet& getOutputData();
 
+        const std::string& getStatus() const;
+        void setStatus(const std::string& value);
+
     private:
         static ProcData theProcData;
 
@@ -947,6 +954,8 @@ namespace kinetica
         std::map<std::string, std::string> m_results;
         std::map<std::string, std::vector<uint8_t> > m_binResults;
         OutputDataSet* m_outputData;
+        std::string m_status;
+        MemoryMappedFile m_statusFile;
 
         ProcData();
         ProcData(const ProcData&);

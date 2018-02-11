@@ -4,7 +4,7 @@ Kinetica C++ API
 This project contains the source code of the Kinetica UDF C++ API and an example
 project.
 
-The documentation can be found at http://www.kinetica.com/docs/6.1/index.html.
+The documentation can be found at http://www.kinetica.com/docs/6.2/index.html.
 UDF-specific documentation can be found at:
 
 *   http://www.kinetica.com/docs/concepts/index.html#user-defined-functions

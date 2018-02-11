@@ -10,20 +10,17 @@ int main(int argc, char *argv[])
         const kinetica::ProcData::InputDataSet& inputData = procData->getInputData();
         kinetica::ProcData::OutputDataSet& outputData = procData->getOutputData();
 
-        // Loop through input and output tables (assume the same number)
         for (size_t i = 0; i < inputData.getTableCount(); ++i)
         {
             const kinetica::ProcData::InputTable& inputTable = inputData[i];
             kinetica::ProcData::OutputTable& outputTable = outputData[i];
             outputTable.setSize(inputTable.getSize());
 
-            // Loop through columns in the input and output tables (assume the same number and types)
             for (size_t j = 0; j < inputTable.getColumnCount(); ++j)
             {
                 const kinetica::ProcData::InputColumn& inputColumn = inputTable[j];
                 kinetica::ProcData::OutputColumn& outputColumn = outputTable[j];
 
-                // For each record, copy the data from the input column to the output column
                 for (size_t k = 0; k < inputTable.getSize(); ++k)
                 {
                     if (inputColumn.isNull(k))
@@ -62,13 +59,10 @@ int main(int argc, char *argv[])
             }
         }
 
-        // Copy any parameters from the input parameter map into the output results map (not necessary for table copying, just for illustrative purposes)
         std::map<std::string, std::string> params = procData->getParams();
         procData->getResults().insert(params.begin(), params.end());
         std::map<std::string, std::vector<uint8_t> > binParams = procData->getBinParams();
         procData->getBinResults().insert(binParams.begin(), binParams.end());
-
-        // Inform Kinetica that the proc has finished successfully
         procData->complete();
     }
     catch (const std::exception& ex)
