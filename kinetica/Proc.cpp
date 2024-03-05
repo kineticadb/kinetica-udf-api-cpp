@@ -14,6 +14,8 @@
 
 namespace
 {
+    const char* hexDigits = "0123456789abcdef";
+
     template<typename T>
     std::string toString(const T& value)
     {
@@ -313,6 +315,149 @@ namespace kinetica
     }
 
     //--------------------------------------------------------------------------
+    // UUID
+    //--------------------------------------------------------------------------
+
+    UUID::UUID()
+    {
+        std::memset(raw, 0, 16);
+    }
+
+    std::string UUID::toString() const
+    {
+        std::string result;
+        result.reserve(36);
+
+        for (std::size_t i = 15; i >= 12; --i)
+        {
+            result.push_back(hexDigits[(raw[i] & 0xf0) >> 4]);
+            result.push_back(hexDigits[raw[i] & 0x0f]);
+        }
+
+        result.push_back('-');
+
+        for (std::size_t i = 11; i >= 10; --i)
+        {
+            result.push_back(hexDigits[(raw[i] & 0xf0) >> 4]);
+            result.push_back(hexDigits[raw[i] & 0x0f]);
+        }
+
+        result.push_back('-');
+
+        for (std::size_t i = 9; i >= 8; --i)
+        {
+            result.push_back(hexDigits[(raw[i] & 0xf0) >> 4]);
+            result.push_back(hexDigits[raw[i] & 0x0f]);
+        }
+
+        result.push_back('-');
+
+        for (std::size_t i = 7; i >= 6; --i)
+        {
+            result.push_back(hexDigits[(raw[i] & 0xf0) >> 4]);
+            result.push_back(hexDigits[raw[i] & 0x0f]);
+        }
+
+        result.push_back('-');
+
+        for (std::size_t i = 5; i != static_cast<std::size_t>(-1); --i)
+        {
+            result.push_back(hexDigits[(raw[i] & 0xf0) >> 4]);
+            result.push_back(hexDigits[raw[i] & 0x0f]);
+        }
+
+        return result;
+    }
+
+    UUID& UUID::operator =(const UUID& value)
+    {
+        if (&value != this)
+        {
+            std::memcpy(raw, value.raw, 16);
+        }
+
+        return *this;
+    }
+
+    bool UUID::operator ==(const UUID& value) const
+    {
+        return std::memcmp(raw, value.raw, 16) == 0;
+    }
+
+    bool UUID::operator !=(const UUID& value) const
+    {
+        return std::memcmp(raw, value.raw, 16) != 0;
+    }
+
+    bool UUID::operator <(const UUID& value) const
+    {
+        for (std::size_t i = 0; i < 16; ++i)
+        {
+            if (raw[15 - i] == value.raw[15 - i])
+            {
+                continue;
+            }
+            else if (raw[15 - i] < value.raw[15 - i])
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    bool UUID::operator <=(const UUID& value) const
+    {
+        for (std::size_t i = 0; i < 16; ++i)
+        {
+            if (raw[15 - i] == value.raw[15 - i])
+            {
+                continue;
+            }
+            else if (raw[15 - i] < value.raw[15 - i])
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    bool UUID::operator >(const UUID& value) const
+    {
+        return !(*this <= value);
+    }
+
+    bool UUID::operator >=(const UUID& value) const
+    {
+        return !(*this < value);
+    }
+
+    uint8_t& UUID::operator [](std::size_t index)
+    {
+        return raw[15 - index];
+    }
+
+    const uint8_t& UUID::operator [](std::size_t index) const
+    {
+        return raw[15 - index];
+    }
+
+    std::ostream& operator <<(std::ostream& os, const UUID& value)
+    {
+        os << value.toString();
+        return os;
+    }
+
+    //--------------------------------------------------------------------------
     // MemoryMappedFile
     //--------------------------------------------------------------------------
 
@@ -541,6 +686,7 @@ namespace kinetica
     {
         switch (type)
         {
+            case BOOLEAN:   return 1;
             case BYTES:     return 8;
             case CHAR1:     return 1;
             case CHAR2:     return 2;
@@ -564,6 +710,8 @@ namespace kinetica
             case STRING:    return 8;
             case TIME:      return 4;
             case TIMESTAMP: return 8;
+            case ULONG:     return 8;
+            case UUID:      return 16;
             default: throw std::runtime_error("Unknown data type: " + ::toString(type));
         }
     }
@@ -663,6 +811,7 @@ namespace kinetica
 
         switch (m_type)
         {
+            case BOOLEAN: return ::toString((int)getValue<int8_t>(index));
             case BYTES: return ::toHexString(getVarValue<uint8_t>(index), getVarValueSize<uint8_t>(index));
             case CHAR1: return getValue<CharN<1> >(index);
             case CHAR2: return getValue<CharN<2> >(index);
@@ -686,6 +835,8 @@ namespace kinetica
             case STRING: return std::string(getVarValue<char>(index), getVarValueSize<char>(index) - 1);
             case TIME: return getValue<Time>(index).toString();
             case TIMESTAMP: return ::toString(getValue<int64_t>(index));
+            case ULONG: return ::toString(getValue<uint64_t>(index));
+            case UUID: return getValue<kinetica::UUID>(index).toString();
             default: throw std::runtime_error("Invalid data type");
         }
     }

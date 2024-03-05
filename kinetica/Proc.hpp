@@ -380,6 +380,26 @@ namespace kinetica
     std::ostream& operator <<(std::ostream& os, const Time& value);
 
 
+    struct UUID
+    {
+        uint8_t raw[16];
+
+        UUID();
+        std::string toString() const;
+        UUID& operator =(const UUID& value);
+        uint8_t& operator [](std::size_t index);
+        const uint8_t& operator [](std::size_t index) const;
+        bool operator ==(const UUID& value) const;
+        bool operator !=(const UUID& value) const;
+        bool operator <(const UUID& value) const;
+        bool operator <=(const UUID& value) const;
+        bool operator >(const UUID& value) const;
+        bool operator >=(const UUID& value) const;
+    };
+
+    std::ostream& operator <<(std::ostream& os, const UUID& value);
+
+
     class ProcData
     {
     private:
@@ -502,29 +522,32 @@ namespace kinetica
         public:
             enum ColumnType
             {
-                BYTES     = 0x0000002,
-                CHAR1     = 0x0080000,
-                CHAR2     = 0x0100000,
-                CHAR4     = 0x0001000,
-                CHAR8     = 0x0002000,
-                CHAR16    = 0x0004000,
-                CHAR32    = 0x0200000,
-                CHAR64    = 0x0400000,
-                CHAR128   = 0x0800000,
-                CHAR256   = 0x1000000,
-                DATE      = 0x2000000,
-                DATETIME  = 0x0000200,
-                DECIMAL   = 0x8000000,
-                DOUBLE    = 0x0000010,
-                FLOAT     = 0x0000020,
-                INT       = 0x0000040,
-                INT8      = 0x0020000,
-                INT16     = 0x0040000,
-                IPV4      = 0x0008000,
-                LONG      = 0x0000080,
-                STRING    = 0x0000001,
-                TIME      = 0x4000000,
-                TIMESTAMP = 0x0010000
+                BOOLEAN   = 0x20000000,
+                BYTES     = 0x00000002,
+                CHAR1     = 0x00080000,
+                CHAR2     = 0x00100000,
+                CHAR4     = 0x00001000,
+                CHAR8     = 0x00002000,
+                CHAR16    = 0x00004000,
+                CHAR32    = 0x00200000,
+                CHAR64    = 0x00400000,
+                CHAR128   = 0x00800000,
+                CHAR256   = 0x01000000,
+                DATE      = 0x02000000,
+                DATETIME  = 0x00000200,
+                DECIMAL   = 0x08000000,
+                DOUBLE    = 0x00000010,
+                FLOAT     = 0x00000020,
+                INT       = 0x00000040,
+                INT8      = 0x00020000,
+                INT16     = 0x00040000,
+                IPV4      = 0x00008000,
+                LONG      = 0x00000080,
+                STRING    = 0x00000001,
+                TIME      = 0x04000000,
+                TIMESTAMP = 0x00010000,
+                ULONG     = 0x00000800,
+                UUID      = 0x00000008
             };
 
             static std::size_t getTypeSize(const ColumnType type);
